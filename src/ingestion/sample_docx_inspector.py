@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 from zipfile import ZipFile
 from lxml import etree
 import csv
@@ -52,6 +52,17 @@ def load_corpus():
         return list(csv.DictReader(file))
 
 
+
+def resolve_archive(archive_name):
+    matches = list(RAW_ROOT.rglob(archive_name))
+
+    if not matches:
+        raise FileNotFoundError(
+            f"Could not locate archive anywhere under {RAW_ROOT}: {archive_name}"
+        )
+
+    return matches[0]
+
 def load_docx_xml(record):
     """
     Return the document.xml bytes regardless of whether
@@ -75,7 +86,7 @@ def load_docx_xml(record):
             1,
         )
 
-        archive_path = RAW_ROOT / archive_name
+        archive_path = resolve_archive(archive_name)
 
         with ZipFile(archive_path) as archive:
             return archive.read(
@@ -106,7 +117,7 @@ def get_document_xml(record):
         "canonical_path"
     ].split("::", 1)
 
-    archive_path = RAW_ROOT / archive_name
+    archive_path = resolve_archive(archive_name)
 
     with ZipFile(archive_path) as outer_archive:
 
@@ -143,7 +154,7 @@ def get_media_count(record):
         "canonical_path"
     ].split("::", 1)
 
-    archive_path = RAW_ROOT / archive_name
+    archive_path = resolve_archive(archive_name)
 
     from io import BytesIO
 
@@ -408,3 +419,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
