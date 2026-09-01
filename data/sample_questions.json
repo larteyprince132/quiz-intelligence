@@ -1,0 +1,57 @@
+[
+    {
+        "id": "sample_001",
+        "competition": "NSMQ",
+        "year": 2023,
+        "stage": "National Championship",
+        "round": "Contestant Round",
+        "subject": "Physics",
+        "topic": "Mechanics",
+        "subtopic": "Projectile Motion",
+        "question_type": "Calculation",
+        "difficulty": 4,
+        "question": "A ball is projected horizontally from a height. Calculate its time of flight.",
+        "answer": "Depends on the height and gravitational acceleration.",
+        "tags": [
+            "kinematics",
+            "projectile",
+            "calculation"
+        ]
+    },
+    {
+        "id": "sample_002",
+        "competition": "NSMQ",
+        "year": 2023,
+        "stage": "National Championship",
+        "round": "Contestant Round",
+        "subject": "Chemistry",
+        "topic": "Atomic Structure",
+        "subtopic": "Periodic Table",
+        "question_type": "Conceptual",
+        "difficulty": 3,
+        "question": "Which element has atomic number 79?",
+        "answer": "Gold",
+        "tags": [
+            "elements",
+            "periodic-table"
+        ]
+    },
+    {
+        "id": "sample_003",
+        "competition": "Sharks",
+        "year": 2024,
+        "stage": "National",
+        "round": "Quiz Round",
+        "subject": "Mathematics",
+        "topic": "Algebra",
+        "subtopic": "Quadratic Equations",
+        "question_type": "Calculation",
+        "difficulty": 4,
+        "question": "Find the roots of x² - 5x + 6 = 0.",
+        "answer": "2 and 3",
+        "tags": [
+            "algebra",
+            "quadratic"
+        ]
+    }
+]
