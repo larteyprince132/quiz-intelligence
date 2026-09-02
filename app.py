@@ -1,10 +1,10 @@
 import streamlit as st
-from src.ai.quiz_ai import Corpus, generate_questions, forecast
+from src.ai.quiz_ai import Corpus, generate_questions
 
 
-# ---------------------------------------------------------
+# =========================================================
 # PAGE CONFIG
-# ---------------------------------------------------------
+# =========================================================
 
 st.set_page_config(
     page_title="Quiz Intelligence",
@@ -13,13 +13,14 @@ st.set_page_config(
 )
 
 
-# ---------------------------------------------------------
-# CUSTOM STYLING
-# ---------------------------------------------------------
+# =========================================================
+# STYLING
+# =========================================================
 
 st.markdown(
     """
     <style>
+
         .main-title {
             font-size: 3rem;
             font-weight: 800;
@@ -46,43 +47,53 @@ st.markdown(
             text-align: center;
             margin: 1rem 0;
         }
+
+        .topic-card {
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+            margin-bottom: 0.8rem;
+        }
+
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 
-# ---------------------------------------------------------
-# LOAD CORPUS
-# ---------------------------------------------------------
+# =========================================================
+# CORPUS
+# =========================================================
 
 @st.cache_resource
 def get_corpus():
     return Corpus()
 
 
-# ---------------------------------------------------------
+# =========================================================
 # SESSION STATE
-# ---------------------------------------------------------
+# =========================================================
 
 defaults = {
     "quiz_started": False,
+    "quiz_finished": False,
     "questions": [],
     "current_question": 0,
     "score": 0,
     "answered": False,
-    "selected_answer": None,
-    "quiz_finished": False,
+    "selected_answer": "",
+    "results": [],
 }
 
 for key, value in defaults.items():
+
     if key not in st.session_state:
         st.session_state[key] = value
 
 
-# ---------------------------------------------------------
+# =========================================================
 # HEADER
-# ---------------------------------------------------------
+# =========================================================
 
 st.markdown(
     '<div class="main-title">🧠 Quiz Intelligence</div>',
@@ -90,14 +101,16 @@ st.markdown(
 )
 
 st.markdown(
-    '<div class="subtitle">Your AI-powered quiz preparation engine</div>',
+    '<div class="subtitle">'
+    'Your AI-powered quiz preparation engine'
+    '</div>',
     unsafe_allow_html=True,
 )
 
 
-# ---------------------------------------------------------
+# =========================================================
 # SIDEBAR
-# ---------------------------------------------------------
+# =========================================================
 
 with st.sidebar:
 
@@ -142,19 +155,21 @@ with st.sidebar:
     )
 
 
-# ---------------------------------------------------------
+# =========================================================
 # START QUIZ
-# ---------------------------------------------------------
+# =========================================================
 
 if start_button:
 
-    # Reset old quiz state
+    # Reset quiz
+    st.session_state.quiz_started = False
+    st.session_state.quiz_finished = False
     st.session_state.questions = []
     st.session_state.current_question = 0
     st.session_state.score = 0
     st.session_state.answered = False
-    st.session_state.selected_answer = None
-    st.session_state.quiz_finished = False
+    st.session_state.selected_answer = ""
+    st.session_state.results = []
 
     with st.spinner("🧠 Generating your quiz..."):
 
@@ -169,7 +184,7 @@ if start_button:
         )
 
     # -----------------------------------------------------
-    # EXTRACT QUESTIONS FROM AI RESPONSE
+    # Extract questions
     # -----------------------------------------------------
 
     if isinstance(result, dict):
@@ -177,8 +192,14 @@ if start_button:
         inner_result = result.get("result", {})
 
         if isinstance(inner_result, dict):
-            questions = inner_result.get("questions", [])
+
+            questions = inner_result.get(
+                "questions",
+                [],
+            )
+
         else:
+
             questions = []
 
     elif isinstance(result, list):
@@ -189,19 +210,20 @@ if start_button:
 
         questions = []
 
+
     # -----------------------------------------------------
-    # START QUIZ IF QUESTIONS EXIST
+    # Start quiz
     # -----------------------------------------------------
 
     if questions:
 
         st.session_state.questions = questions
+        st.session_state.quiz_started = True
         st.session_state.current_question = 0
         st.session_state.score = 0
         st.session_state.answered = False
-        st.session_state.selected_answer = None
-        st.session_state.quiz_started = True
-        st.session_state.quiz_finished = False
+        st.session_state.selected_answer = ""
+        st.session_state.results = []
 
         st.rerun()
 
@@ -213,9 +235,9 @@ if start_button:
         )
 
 
-# ---------------------------------------------------------
+# =========================================================
 # ACTIVE QUIZ
-# ---------------------------------------------------------
+# =========================================================
 
 if (
     st.session_state.quiz_started
@@ -232,10 +254,12 @@ if (
 
 
     # -----------------------------------------------------
-    # PROGRESS
+    # Progress
     # -----------------------------------------------------
 
-    st.progress((index + 1) / total)
+    st.progress(
+        (index + 1) / total
+    )
 
     st.markdown(
         f'<div class="question-number">'
@@ -246,7 +270,7 @@ if (
 
 
     # -----------------------------------------------------
-    # QUESTION TEXT
+    # Question
     # -----------------------------------------------------
 
     question_text = question.get(
@@ -261,253 +285,220 @@ if (
 
 
     # -----------------------------------------------------
-    # OPTIONS
+    # Metadata
     # -----------------------------------------------------
 
-    options = question.get("options", [])
+    q_topic = question.get(
+        "topic",
+        topic if topic else "General",
+    )
 
+    difficulty = question.get(
+        "difficulty",
+        None,
+    )
 
-    # -----------------------------------------------------
-    # MULTIPLE CHOICE QUESTION
-    # -----------------------------------------------------
+    if difficulty is not None:
 
-    if options:
+        st.caption(
+            f"📚 Topic: {q_topic}   |   "
+            f"🎯 Difficulty: {difficulty}/5"
+        )
 
-        selected = st.radio(
-            "Choose your answer:",
-            options,
-            key=f"question_{index}",
-            disabled=st.session_state.answered,
+    else:
+
+        st.caption(
+            f"📚 Topic: {q_topic}"
         )
 
 
-        # -------------------------------------------------
-        # SUBMIT ANSWER
-        # -------------------------------------------------
+    # -----------------------------------------------------
+    # Answer box
+    # -----------------------------------------------------
 
-        if not st.session_state.answered:
-
-            if st.button(
-                "✅ Submit Answer",
-                use_container_width=True,
-            ):
-
-                st.session_state.selected_answer = selected
-                st.session_state.answered = True
-
-                correct_answer = str(
-                    question.get("answer", "")
-                ).strip()
-
-
-                # Check answer
-                if (
-                    str(selected).strip().lower()
-                    == correct_answer.lower()
-                ):
-
-                    st.session_state.score += 1
-
-                st.rerun()
-
-
-        # -------------------------------------------------
-        # SHOW RESULT
-        # -------------------------------------------------
-
-        else:
-
-            correct_answer = str(
-                question.get("answer", "")
-            ).strip()
-
-            selected_answer = str(
-                st.session_state.selected_answer
-            ).strip()
-
-
-            if (
-                selected_answer.lower()
-                == correct_answer.lower()
-            ):
-
-                st.success("🎉 Correct!")
-
-            else:
-
-                st.error(
-                    f"❌ Not quite. "
-                    f"The correct answer is: "
-                    f"**{correct_answer}**"
-                )
-
-
-            # Explanation
-            solution = question.get("solution")
-
-            if solution:
-
-                st.info(
-                    f"💡 **Explanation:** {solution}"
-                )
-
-
-            # Next question
-            if index + 1 < total:
-
-                if st.button(
-                    "➡️ Next Question",
-                    use_container_width=True,
-                ):
-
-                    st.session_state.current_question += 1
-                    st.session_state.answered = False
-                    st.session_state.selected_answer = None
-
-                    st.rerun()
-
-            # Finish quiz
-            else:
-
-                if st.button(
-                    "🏁 Finish Quiz",
-                    use_container_width=True,
-                ):
-
-                    st.session_state.quiz_finished = True
-
-                    st.rerun()
+    answer = st.text_area(
+        "Your answer:",
+        value=(
+            st.session_state.selected_answer
+            if st.session_state.answered
+            else ""
+        ),
+        height=120,
+        key=f"answer_box_{index}",
+        disabled=st.session_state.answered,
+        placeholder="Type your answer here...",
+    )
 
 
     # -----------------------------------------------------
-    # OPEN-ENDED QUESTION
+    # Submit
+    # -----------------------------------------------------
+
+    if not st.session_state.answered:
+
+        if st.button(
+            "✅ Submit Answer",
+            use_container_width=True,
+        ):
+
+            st.session_state.selected_answer = answer.strip()
+
+            correct_answer = str(
+                question.get(
+                    "answer",
+                    "",
+                )
+            ).strip()
+
+
+            student_answer = (
+                answer.strip().lower()
+            )
+
+            expected_answer = (
+                correct_answer.lower()
+            )
+
+
+            # -------------------------------------------------
+            # Basic answer evaluation
+            # -------------------------------------------------
+
+            is_correct = (
+                student_answer != ""
+                and student_answer == expected_answer
+            )
+
+
+            if is_correct:
+
+                st.session_state.score += 1
+
+
+            # Store result
+            st.session_state.results.append(
+                {
+                    "question": question_text,
+                    "topic": q_topic,
+                    "difficulty": difficulty,
+                    "student_answer": answer.strip(),
+                    "correct_answer": correct_answer,
+                    "correct": is_correct,
+                }
+            )
+
+
+            st.session_state.answered = True
+
+            st.rerun()
+
+
+    # -----------------------------------------------------
+    # Feedback
     # -----------------------------------------------------
 
     else:
 
-        st.warning(
-            "This question does not contain multiple-choice "
-            "options, so enter your answer below."
-        )
+        correct_answer = str(
+            question.get(
+                "answer",
+                "",
+            )
+        ).strip()
 
-        answer = st.text_input(
-            "Your answer:",
-            key=f"text_answer_{index}",
-            disabled=st.session_state.answered,
-        )
+        student_answer = str(
+            st.session_state.selected_answer
+        ).strip()
+
+
+        if (
+            student_answer.lower()
+            == correct_answer.lower()
+            and student_answer != ""
+        ):
+
+            st.success(
+                "🎉 Correct! Excellent work."
+            )
+
+        else:
+
+            st.error(
+                "❌ Not quite."
+            )
+
+            st.markdown(
+                f"### Correct answer"
+            )
+
+            st.write(correct_answer)
 
 
         # -------------------------------------------------
-        # SUBMIT OPEN-ENDED ANSWER
+        # Explanation
         # -------------------------------------------------
 
-        if not st.session_state.answered:
+        solution = question.get(
+            "solution"
+        )
+
+        if solution:
+
+            st.info(
+                f"💡 **Explanation**\n\n{solution}"
+            )
+
+
+        # -------------------------------------------------
+        # Next question
+        # -------------------------------------------------
+
+        if index + 1 < total:
 
             if st.button(
-                "✅ Submit Answer",
+                "➡️ Next Question",
                 use_container_width=True,
             ):
 
-                st.session_state.selected_answer = answer
-                st.session_state.answered = True
+                st.session_state.current_question += 1
+                st.session_state.answered = False
+                st.session_state.selected_answer = ""
 
-                correct_answer = str(
-                    question.get("answer", "")
-                ).strip()
+                st.rerun()
 
+        else:
 
-                if (
-                    answer.strip().lower()
-                    == correct_answer.lower()
-                ):
+            if st.button(
+                "🏁 Finish Quiz",
+                use_container_width=True,
+            ):
 
-                    st.session_state.score += 1
+                st.session_state.quiz_started = False
+                st.session_state.quiz_finished = True
 
                 st.rerun()
 
 
-        # -------------------------------------------------
-        # SHOW OPEN-ENDED RESULT
-        # -------------------------------------------------
-
-        else:
-
-            correct_answer = str(
-                question.get("answer", "")
-            ).strip()
-
-            selected_answer = str(
-                st.session_state.selected_answer
-            ).strip()
-
-
-            if (
-                selected_answer.lower()
-                == correct_answer.lower()
-            ):
-
-                st.success("🎉 Correct!")
-
-            else:
-
-                st.error(
-                    f"❌ Correct answer: "
-                    f"**{correct_answer}**"
-                )
-
-
-            # Explanation
-            solution = question.get("solution")
-
-            if solution:
-
-                st.info(
-                    f"💡 **Explanation:** {solution}"
-                )
-
-
-            # Next question
-            if index + 1 < total:
-
-                if st.button(
-                    "➡️ Next Question",
-                    use_container_width=True,
-                ):
-
-                    st.session_state.current_question += 1
-                    st.session_state.answered = False
-                    st.session_state.selected_answer = None
-
-                    st.rerun()
-
-            # Finish
-            else:
-
-                if st.button(
-                    "🏁 Finish Quiz",
-                    use_container_width=True,
-                ):
-
-                    st.session_state.quiz_finished = True
-
-                    st.rerun()
-
-
-# ---------------------------------------------------------
-# QUIZ RESULTS
-# ---------------------------------------------------------
+# =========================================================
+# RESULTS
+# =========================================================
 
 elif st.session_state.quiz_finished:
 
-    questions = st.session_state.questions
+    results = st.session_state.results
 
-    total = len(questions)
+    total = len(results)
 
     score = st.session_state.score
 
 
-    st.success("🏆 Quiz Complete!")
+    # -----------------------------------------------------
+    # Header
+    # -----------------------------------------------------
 
+    st.success(
+        "🏆 Quiz Complete!"
+    )
 
     st.markdown(
         f'<div class="score">'
@@ -525,35 +516,213 @@ elif st.session_state.quiz_finished:
 
 
     st.metric(
-        "Score",
+        "Overall Score",
         f"{percentage:.0f}%",
     )
 
+
+    # -----------------------------------------------------
+    # Performance message
+    # -----------------------------------------------------
 
     if percentage >= 80:
 
         st.balloons()
 
         st.success(
-            "🔥 Excellent performance!"
+            "🔥 Excellent performance! "
+            "You're getting into serious quiz territory."
         )
 
     elif percentage >= 60:
 
         st.info(
-            "👍 Good work. Keep sharpening "
-            "those weak areas."
+            "👍 Solid performance. "
+            "A little more targeted practice can push this higher."
         )
 
     else:
 
         st.warning(
-            "📚 More practice will help. "
-            "Let's attack the weak areas!"
+            "📚 More practice is needed. "
+            "Let's identify where the gaps are."
         )
 
 
-    # Start another quiz
+    # =====================================================
+    # TOPIC PERFORMANCE
+    # =====================================================
+
+    st.markdown("---")
+
+    st.header(
+        "🧠 Topic Performance"
+    )
+
+
+    topic_stats = {}
+
+
+    for result in results:
+
+        current_topic = result.get(
+            "topic",
+            "General",
+        )
+
+        if current_topic not in topic_stats:
+
+            topic_stats[current_topic] = {
+                "correct": 0,
+                "total": 0,
+            }
+
+        topic_stats[current_topic]["total"] += 1
+
+        if result["correct"]:
+
+            topic_stats[current_topic]["correct"] += 1
+
+
+    for current_topic, stats in topic_stats.items():
+
+        topic_total = stats["total"]
+
+        topic_correct = stats["correct"]
+
+        topic_percentage = (
+            topic_correct
+            / topic_total
+            * 100
+        )
+
+
+        if topic_percentage >= 80:
+
+            indicator = "🟢"
+
+        elif topic_percentage >= 60:
+
+            indicator = "🟡"
+
+        else:
+
+            indicator = "🔴"
+
+
+        st.markdown(
+            f"""
+            <div class="topic-card">
+                <strong>
+                    {indicator} {current_topic}
+                </strong>
+                <br>
+                {topic_correct} / {topic_total}
+                correct
+                <br>
+                {topic_percentage:.0f}%
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+    # =====================================================
+    # WEAK AREAS
+    # =====================================================
+
+    weak_topics = []
+
+    for current_topic, stats in topic_stats.items():
+
+        topic_percentage = (
+            stats["correct"]
+            / stats["total"]
+            * 100
+        )
+
+        if topic_percentage < 60:
+
+            weak_topics.append(
+                current_topic
+            )
+
+
+    if weak_topics:
+
+        st.markdown("---")
+
+        st.header(
+            "🎯 Recommended Practice"
+        )
+
+        st.warning(
+            "These areas need more attention:"
+        )
+
+        for weak_topic in weak_topics:
+
+            st.write(
+                f"🔴 **{weak_topic}**"
+            )
+
+        st.write(
+            "The next version will be able to "
+            "automatically generate targeted questions "
+            "for these weak areas."
+        )
+
+
+    # =====================================================
+    # QUESTION REVIEW
+    # =====================================================
+
+    st.markdown("---")
+
+    st.header(
+        "📝 Question Review"
+    )
+
+
+    for number, result in enumerate(
+        results,
+        start=1,
+    ):
+
+        if result["correct"]:
+
+            icon = "✅"
+
+        else:
+
+            icon = "❌"
+
+
+        with st.expander(
+            f"{icon} Question {number}"
+        ):
+
+            st.write(
+                result["question"]
+            )
+
+            st.write(
+                f"**Your answer:** "
+                f"{result['student_answer']}"
+            )
+
+            st.write(
+                f"**Correct answer:** "
+                f"{result['correct_answer']}"
+            )
+
+
+    # =====================================================
+    # NEW QUIZ
+    # =====================================================
+
+    st.markdown("---")
+
     if st.button(
         "🔄 Start Another Quiz",
         use_container_width=True,
@@ -565,14 +734,15 @@ elif st.session_state.quiz_finished:
         st.session_state.current_question = 0
         st.session_state.score = 0
         st.session_state.answered = False
-        st.session_state.selected_answer = None
+        st.session_state.selected_answer = ""
+        st.session_state.results = []
 
         st.rerun()
 
 
-# ---------------------------------------------------------
+# =========================================================
 # HOME SCREEN
-# ---------------------------------------------------------
+# =========================================================
 
 else:
 
@@ -586,6 +756,10 @@ else:
         "for quiz preparation."
     )
 
+
+    # -----------------------------------------------------
+    # Stats
+    # -----------------------------------------------------
 
     col1, col2, col3 = st.columns(3)
 
@@ -617,26 +791,29 @@ else:
     st.markdown("---")
 
 
-    st.markdown(
-        "### 🚀 What you can practice"
-    )
+    # -----------------------------------------------------
+    # Modes
+    # -----------------------------------------------------
 
+    st.markdown(
+        "### 🚀 Practice Modes"
+    )
 
     st.write(
         """
         **📘 Standard Questions**
 
-        Build your fundamentals.
+        Build your fundamentals with focused questions.
 
 
         **⚡ Speed Race**
 
-        Practice answering quickly.
+        Train yourself to think and answer quickly.
 
 
         **🧩 Riddles**
 
-        Train your reasoning.
+        Develop reasoning and lateral thinking.
 
 
         **✅ True / False**
@@ -653,5 +830,6 @@ else:
 
     st.info(
         "Choose your subject and quiz settings "
-        "from the sidebar, then click **Start Quiz**."
+        "from the sidebar, then click "
+        "**Start Quiz**."
     )
